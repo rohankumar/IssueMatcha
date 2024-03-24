@@ -4,19 +4,18 @@ You are given the following entities in markdown:
 
 ISSUE TITLE: The title of the issue.
 ISSUE BODY: Description of the issue.
-COMMENTS: Any comments on the issue by other contributors in a list format.
 README: README file of the repository which provides additional information about the repository.
 __
 
 TASK: 
 Generate a set of 20 tags that can be used to distinguish this repository. For example skills, expertise, domain, background required to work on this repository.
-Limit each tag length to a maximum of 3 words. Let the output be a json as this template: \\{"tags"\\: ["", "",..]}
+Limit each tag length to a maximum of 3 words. Let the output be a JSON as this template: \\{"tags"\\: ["", "",..]}
 ###
 ———————————
 {query_str}
 ———————————
 ''')
-
+# COMMENTS: Any comments on the issue by other contributors in a list format.
 summary_prompt=('''
 You are the maintainer of an open source repository on Github. Your task is to provide a useful brief summary for this repository.
 You are given the following repository's README in markdown:
@@ -26,7 +25,7 @@ __
 
 TASK: 
 Generate a summary that can be used to distinguish this repository.
-Let the output be a json as this template: \\{"summary"\\: ["", "",..]}
+Let the output be a JSON as this template: \\{"summary"\\: ""}
 ###
 ———————————
 {query_str}

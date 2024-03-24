@@ -6,6 +6,7 @@ from IPython.display import Markdown, display
 # from llama_index.core.vector_stores import WeaviateVectorStore
 from llama_index.core.storage import StorageContext
 from llama_index.core import ServiceContext
+from llama_index.core.prompts import PromptTemplate
 from llama_index.core.indices.prompt_helper import PromptHelper
 from llama_index.core.node_parser import NodeParser, MetadataAwareTextSplitter, SentenceSplitter
 from llama_index.embeddings.mistralai import MistralAIEmbedding
@@ -27,78 +28,47 @@ logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 logger = logging.getLogger()
 
 repo_metadata_keys = ['repo']
-issue_metadata_keys = ['repo', 'labels']
-tags = []
+issue_metadata_keys = {'repo': 'REPO', 'labels': 'LABELS', 'number': 'ISSUE_ID', 'body': 'ISSUE_SUMMARY', 'title': 'ISSUE_TITLE'}
+# issue_metadata_keys = {'repo': 'REPO', 'labels': 'LABELS', 'number': 'ISSUE ID', 'title': 'ISSUE TITLE'}
 
-def generate_tags(tag_input, summ_ip):
-    api_key = os.environ["MISTRAL_API_KEY"]
-    model = "mistral-large-latest"
-    client = MistralClient(api_key=api_key)
-    tag_msgs = [
-        ChatMessage(role="user", content=tagging_prompt.replace('{query_str}', tag_input))
-    ]
-    repo_msgs = [ChatMessage(role="user", content=summary_prompt.replace('{query_str}', summ_ip))]
-    repo_tags = client.chat(
-        model=model,
-        response_format={"type": "json_object"},
-        messages=tag_msgs,
-    )
-    repo_summary = client.chat(
-        model=model,
-        response_format={"type": "json_object"},
-        messages=repo_msgs,
-    )
-    tags = repo_tags.choices[0].message.content
-    summ = repo_summary.choices[0].message.content
-    output = dict()
-    output.update(json.loads(tags))
-    output.update(json.loads(summ))
-    # logger.info(f'\n\n---\n{repo}: {output}\n---')
-    # json.dump(output, open(f'{domain_path}/{repo}/summary_tags.json', 'w'))
-    return output
-
-def load_domain(path):
-    repo_docs = []
-    issue_docs = []
-    for repo in os.listdir(path):
-        all_repo_tags = []
-        repo_doc = json.load(open(f'{path}/{repo}/README.json', 'r'))
-        repo_doc['repo'] = repo
-        li_repo_doc = Document(text=repo_doc['markdown'])
-        li_repo_doc.metadata = {x: repo_doc[x] for x in repo_metadata_keys}
-        repo_docs.append(li_repo_doc)
+# def load_domain(path):
+#     repo_docs = []
+#     issue_docs = []
+#     for repo in os.listdir(path):
+#         all_repo_tags = []
+#         repo_doc = json.load(open(f'{path}/{repo}/README.json', 'r'))
+#         repo_doc['repo'] = repo
+#         li_repo_doc = Document(text=repo_doc['markdown'])
+#         li_repo_doc.metadata = {x: repo_doc[x] for x in repo_metadata_keys}
+#         repo_docs.append(li_repo_doc)
         
-        issues = json.load(open(f'{path}/{repo}/issues.json', 'r'))
-        issues_li_docs = []
-        for i in issues:
-            i['repo'] = repo
-            doc_text = f'''
-            ISSUE TITLE: {i["title"]}.
-            ISSUE BODY: {i["body"]}.
-            COMMENTS: {i["comments"]}
-            README: {li_repo_doc.text}'''
+#         issues = json.load(open(f'{path}/{repo}/issues.json', 'r'))
+#         issues_li_docs = []
+#         for i in issues:
+#             i['repo'] = repo
+#             doc_text = f'''
+#             ISSUE TITLE: {i["title"]}.
+#             ISSUE BODY: {i["body"]}.
+#             COMMENTS: {i["comments"]}
+#             README: {li_repo_doc.text}'''
             
-            li_doc = Document(text=doc_text)
-            li_doc.metadata = {x: i[x] for x in issue_metadata_keys}
-            issues_li_docs.append(li_doc)
-            tag_engine_input = doc_text + \
-            f'''
-            LABELS: {i["labels"]}
-            '''
-            repo_tags = {"issue_title": i['title']}
-            repo_tags.update(generate_tags(tag_engine_input, summ_ip=li_repo_doc.text))
-            all_repo_tags.append(repo_tags)
-        json.dump(all_repo_tags, open(f'{path}/{repo}/tags_summary.json', 'w')) 
-        issue_docs.extend(issues_li_docs)
-    return repo_docs, issue_docs
+#             li_doc = Document(text=doc_text)
+#             li_doc.metadata = {x: i[x] for x in issue_metadata_keys}
+#             issues_li_docs.append(li_doc)
+#             tag_engine_input = doc_text + \
+#             f'''
+#             LABELS: {i["labels"]}
+#             '''
+#             repo_tags = {"issue_title": i['title']}
+#             repo_tags.update(generate_tags(tag_engine_input, summ_ip=li_repo_doc.text))
+#             all_repo_tags.append(repo_tags)
+#         json.dump(all_repo_tags, open(f'{path}/{repo}/tags_summary.json', 'w')) 
+#         issue_docs.extend(issues_li_docs)
+#     return repo_docs, issue_docs
     
-llm = MistralAI(model='mistral-large', additional_kwargs={'response_format': {"type": "json_object"}})
+# llm = MistralAI(model='mistral-large', additional_kwargs={'response_format': {"type": "json_object"}})
+llm = MistralAI(model='mistral-large')
 embed_model = MistralAIEmbedding(model_name="mistral-embed", api_key=os.environ.get("MISTRAL_API_KEY"))
-
-embeddings = embed_model.get_text_embedding("La Plateforme - The Platform")
-# resp = llm.complete("Paul Graham is ")
-# print(resp)
-
 service_context = ServiceContext.from_defaults(
     llm=llm,
     prompt_helper=PromptHelper.from_llm_metadata(llm_metadata=llm.metadata),
@@ -169,14 +139,36 @@ service_context = ServiceContext.from_defaults(
 #         json.dump(output, open(f'{domain_path}/{repo}/summary_tags.json', 'w'))
 #     return True
 
+def load_domain_issues(path):
+    issue_docs = []
+    for repo in os.listdir(path):        
+        issue_tags = json.load(open(f'{path}/{repo}/tags_summary.json', 'r'))
+        issue_map = dict()
+        for i in json.load(open(f'{path}/{repo}/issues.json', 'r')):
+            issue_map[i['title']] = i
+            
+        issues_li_docs = []
+        for i in issue_tags:
+            itags = i['tags']
+            doc_text = f'''{",".join(itags)}'''
+            li_doc = Document(text=doc_text, 
+                              excluded_embed_metadata_keys=['ISSUE_SUMMARY', 'LABELS', 'ISSUE_ID', 'REPO'], 
+                              excluded_llm_metadata_keys=['LABELS', 'REPO', 'ISSUE ID'],
+                              text_template="{metadata_str}", metadata_template=
+                              '''{key}:{value}''')
+            li_doc.metadata = {issue_metadata_keys[x]: issue_map[i['issue_title']][x] for x in issue_metadata_keys.keys() if x in issue_map[i['issue_title']].keys()}
+            li_doc.metadata['repo'] = repo
+            issues_li_docs.append(li_doc)
+        issue_docs.extend(issues_li_docs)
+    return issue_docs
 
 def data_loader(path=None):    
     client = weaviate.Client(embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate', binary_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate'))
-    domain_repo_indices = {}
     domain_issue_indices = {}
     for domain in os.listdir(path):
         logger.info(f'Loading domain: {domain}')
-        domain_info = load_domain(f'{path}/{domain}')
+        issues = load_domain_issues(f'{path}/{domain}')
+        print(f'sample issue for domain:{domain}\n{issues[0]}')
         # repo
         # repo_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'_repos', text_key="text")
         # repo_storage_context = StorageContext.from_defaults(vector_store=repo_vs)
@@ -187,15 +179,11 @@ def data_loader(path=None):
         #generate tags for first time loading
         # generate_and_save_tags(f'{path}/{domain}')
         
-        
-        #issues 
+        # issues 
         # issue_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'_issues', text_key="text")
-        # issue_storage_context = StorageContext.from_defaults(vector_store=issue_vs)
-        # issue_index = VectorStoreIndex.from_documents(issues, service_context=service_context, storage_context=issue_storage_context, show_progress=True)
-        # issue_index = VectorStoreIndex.from_vector_store(service_context=service_context, vector_store=issue_vs, show_progress=True)
-
-        
-        
+        issue_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'__ISSUES2', text_key="text")
+        issue_storage_context = StorageContext.from_defaults(vector_store=issue_vs)
+        issue_index = VectorStoreIndex.from_documents(issues, service_context=service_context, storage_context=issue_storage_context, show_progress=True)
         # index_query_engine = issue_index.as_query_engine(similarity_top_k=10, text_qa_template=recommendation_prompt)
         # # print(index_query_engine.query("Which of these issues would be suitable for me if I want to spend around 0-10 hours of my time on it? Use a chain-of-thought processing and populate the 'reason' field in the output.  Output in JSON format with following attributes: issue_repo, issue_title, reason, time_needed"))
         # issue_response = index_query_engine.query(prompt)
@@ -204,10 +192,29 @@ def data_loader(path=None):
         # domain_repo_indices[domain] = repo_index
         # domain_issue_indices[domain] = issue_index
         # logger.info(f'Loaded domain')
-    
+
+def recommend(domain, user_pref='', past_pref=''):
+    client = weaviate.Client(embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate', binary_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate'))
+    vs_store = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'__ISSUES2', text_key="text")
+    issue_index = VectorStoreIndex.from_vector_store(service_context=service_context, vector_store=vs_store, show_progress=True)
+    query_str = f'{user_pref+past_pref}'
+    # candidates = issue_index.as_query_engine(similarity_top_k=1, text_qa_template=recommendation_prompt)
+    prompt = recommendation_prompt.replace('{USER_PREFERENCES}', str(user_pref)).replace('{PAST_CONTRIBUTIONS_TAGS}', str(past_pref))
+    recommender = issue_index.as_query_engine(similarity_top_k=5, text_qa_template=PromptTemplate(prompt))
+    output = recommender.query(query_str)      
+    print(output)
+    print([n.metadata['ISSUE_TITLE'] for n in output.source_nodes])
+
     
 if __name__ == '__main__':
-    data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/files')
+    # data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
+    # recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=['transformers', 'pytorch', 'tensor'])
+    recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=[])
+
+    
+    
+    
+    
     # chat_engine = index.as_query_engine(retriever_mode='embedding', similarity_top_k=4, streaming=True)
     # response_gen = chat_engine.query('what are the risk factors of AAPL?'+' Please cite your sources from the given sources only.')
 # def get_query_engine():
