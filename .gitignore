@@ -1,1 +1,4 @@
 data/.env
+data/mistral-*
+output_dir/
+tmp_trainer/
