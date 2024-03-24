@@ -12,12 +12,12 @@ from llama_index.core.node_parser import NodeParser, MetadataAwareTextSplitter, 
 from llama_index.embeddings.mistralai import MistralAIEmbedding
 import os
 from typing import List
-from llama_index.readers.json import JSONReader
 import json 
 from llama_index.core.schema import Document
 import re
 import logging
 import sys
+from data.repos import full_repo_paths
 from backend.prompts.tagging import tagging_prompt, summary_prompt
 from backend.prompts.recommendation import recommendation_prompt
 from mistralai.client import MistralClient
@@ -157,7 +157,7 @@ def load_domain_issues(path):
                               text_template="{metadata_str}", metadata_template=
                               '''{key}:{value}''')
             li_doc.metadata = {issue_metadata_keys[x]: issue_map[i['issue_title']][x] for x in issue_metadata_keys.keys() if x in issue_map[i['issue_title']].keys()}
-            li_doc.metadata['repo'] = repo
+            li_doc.metadata['REPO'] = repo
             issues_li_docs.append(li_doc)
         issue_docs.extend(issues_li_docs)
     return issue_docs
@@ -193,23 +193,42 @@ def data_loader(path=None):
         # domain_issue_indices[domain] = issue_index
         # logger.info(f'Loaded domain')
 
-def recommend(domain, user_pref='', past_pref=''):
-    client = weaviate.Client(embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate', binary_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate'))
-    vs_store = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'__ISSUES2', text_key="text")
-    issue_index = VectorStoreIndex.from_vector_store(service_context=service_context, vector_store=vs_store, show_progress=True)
+def recommend(issue_index, user_pref='', past_pref=''):
+    sorting_priority = {'HIGHLY_RECOMMENDED':1, 'NOT_RECOMMENDED': 3, 'UNABLE_TO_DETERMINE': 2}
+    output_keys = ['ISSUE_TITLE', 'ISSUE_ID', 'repo', 'LABELS']
+    # domain_vdb_map = {'AI/ML': 'AI_REPOS', 'Systems': 'SYSTEM_ADMIN', 'Web dev': 'WEB_APP_DEV', 'Data Science': 'DATA_SCIENCE',
+    #                   'Game Dev': 'GAME_DEV', 'Mobile App Dev': 'MOBILE_APP'
+    #                   }
+    # client = weaviate.Client(embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate', binary_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate'))
+    # vs_store = WeaviateVectorStore(weaviate_client=client, index_name=domain_vdb_map[domain]+'__ISSUES2', text_key="text")
+    # issue_index = VectorStoreIndex.from_vector_store(service_context=service_context, vector_store=vs_store, show_progress=True)
     query_str = f'{user_pref+past_pref}'
     # candidates = issue_index.as_query_engine(similarity_top_k=1, text_qa_template=recommendation_prompt)
     prompt = recommendation_prompt.replace('{USER_PREFERENCES}', str(user_pref)).replace('{PAST_CONTRIBUTIONS_TAGS}', str(past_pref))
     recommender = issue_index.as_query_engine(similarity_top_k=5, text_qa_template=PromptTemplate(prompt))
     output = recommender.query(query_str)      
-    print(output)
-    print([n.metadata['ISSUE_TITLE'] for n in output.source_nodes])
+    metadata = [{k:n.metadata[k] for k in output_keys} for n in output.source_nodes]
+    response = []
+    
+
+    for op, md in zip(json.loads(output.response), metadata):
+        item = {
+            'LABEL': op['LABEL'],
+            'EXPLANATIONS': op['EXPLANATION'],
+            'ISSUE_ID': md['ISSUE_ID'],
+            'ISSUE_TITLE': md['ISSUE_TITLE'],
+            'REPO': full_repo_paths[md['repo']]
+        }
+        response.append(item)
+        response = sorted(response, key=lambda x: sorting_priority[x['LABEL']])
+        print(response)
+    return response
 
     
-if __name__ == '__main__':
-    # data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
-    # recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=['transformers', 'pytorch', 'tensor'])
-    recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=[])
+# if __name__ == '__main__':
+#     # data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
+#     # recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=['transformers', 'pytorch', 'tensor'])
+#     recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=[])
 
     
     

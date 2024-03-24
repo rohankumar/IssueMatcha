@@ -26,7 +26,7 @@ def main():
                 'Language',
                 ('Python', 'Java', 'Javascript', 'C++', 'C', 'Angular', 'React', 'C#', 'Swift', 'Ruby', 'Go'))
             details = st.text_input('Enter additional details (optional)')
-            submitted = st.form_submit_button('Mistral')
+            submitted = st.form_submit_button('Matcha me!')
 
     
     if submitted:
@@ -57,54 +57,79 @@ def main():
             ]
             past_contributions = ''
             user_preferences = '''
-            Domain: {domain}
-            Programming Languages: {languages_comma}
-            Preferences: {details}
-            '''.format(domain = domain, languages_comma = ','.join(languages), details = details)
-            print(json.dumps(issues))
-            prompt_filled = INFERENCE_PROMPT.format(USER_PREFERENCES=user_preferences,PAST_CONTRIBUTIONS=past_contributions, ISSUES=json.dumps(issues))
-            # chat_response = generate_response(prompt_filled)
+            # Domain: {domain}
+            # Programming Languages: {languages_comma}
+            # Preferences: {details}
+            # '''.format(domain = domain, languages_comma = ','.join(languages), details = details)
+            # print(json.dumps(issues))
+            # prompt_filled = INFERENCE_PROMPT.format(USER_PREFERENCES=user_preferences,PAST_CONTRIBUTIONS=past_contributions, ISSUES=json.dumps(issues))
+            chat_response = generate_response(domain=domain, user_pref=[','.join(languages)]+[details], past_contributions=[''])
             # chat_response = chat_response['choices'][0]['message']['content']
             # print(chat_response)
             # chat_response = generate_mistral_response(prompt_filled)
             # chat_response = json.loads(chat_response['choices'][0]['message']['content'])
-            chat_response = [{'LABEL': 'NOT_RECOMMENDED', 'EXPLANATION': "This issue seems to be related to CI/CD and numpy, which are not mentioned in the user's preferences or past contributions."}, {'LABEL': 'UNABLE_TO_DETERMINE', 'EXPLANATION': "While 'polars' could potentially be used in AI/ML, it's not clear from the issue if this is the case. The user's past contributions and preferences don't provide enough context."}, {'LABEL': 'UNABLE_TO_DETERMINE', 'EXPLANATION': "This issue seems to be related to sklearn, which could be used in AI/ML. However, the user's preferences and past contributions don't mention sklearn or Python."}]
+            # chat_response = [{'LABEL': 'NOT_RECOMMENDED', 'EXPLANATION': "This issue seems to be related to CI/CD and numpy, which are not mentioned in the user's preferences or past contributions."}, {'LABEL': 'UNABLE_TO_DETERMINE', 'EXPLANATION': "While 'polars' could potentially be used in AI/ML, it's not clear from the issue if this is the case. The user's past contributions and preferences don't provide enough context."}, {'LABEL': 'UNABLE_TO_DETERMINE', 'EXPLANATION': "This issue seems to be related to sklearn, which could be used in AI/ML. However, the user's preferences and past contributions don't mention sklearn or Python."}]
             results = defaultdict(list)
             
             print(chat_response)
             print(type(chat_response))
             
-            for idx, response in enumerate(chat_response):
-                if response['LABEL'] == 'HIGHLY RECOMMENDED':
-                    results['HIGHLY RECOMMENDED'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
-                if response['LABEL'] == 'UNABLE_TO_DETERMINE':
-                    results['UNABLE_TO_DETERMINE'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
-            
-            c1, c2, c3 = st.columns([2,6,2])
+            repos = []
+            titles = []
+            issue_ids = []
+            explanations = []
+            labels = []
+            for response in chat_response['results']:
+                labels.append(response['LABEL'])
+                repos.append(response['REPO'])
+                titles.append(response['ISSUE_TITLE'])
+                issue_ids.append(response['ISSUE_ID'])
+                explanations.append(response['EXPLANATIONS'])
+            # for idx, response in enumerate(chat_response):
+            #     if response['LABEL'] == 'HIGHLY RECOMMENDED':
+            #         results['HIGHLY RECOMMENDED'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
+            #     if response['LABEL'] == 'UNABLE_TO_DETERMINE':
+            #         results['UNABLE_TO_DETERMINE'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
+
+                
+            c1, c2, c3 = st.columns([2,4,4])
             with c1:
                 st.subheader("Repository")
-                st.button("dummy 1")
-                st.button("dummy 2")
-                
+                # for repo in repos:
+                st.button(repos[0], key=0)
+                st.button(repos[1], key=1)
+                st.button(repos[2], key=2)
+                st.button(repos[3], key=3)
+                st.button(repos[4], key=4)
+
             with c2:
                 st.subheader("Issue")
-                r1 = results['HIGHLY RECOMMENDED']
-                for r in r1:
-                    st.link_button("#1662 " + r[1], "https://www.google.com", help=r[2])
-                    # expander = st.expander(r[1])
-                    # expander.write(r[2])
+                for idx, issue in enumerate(titles):
+                    st.link_button(f'{labels[idx]}: {issue}', f"https://github.com/{repos[idx]}/issues/{issue_ids[idx]}")
+                    # expander = st.expander("WHY IS IT FOR YOU")
+                    # expander.write(explanations[idx])
+            
+            with c3:
+                st.subheader("Info")
+                for info in explanations:
+                    st.info(f'{info}')
+                # st.info('This is a purely informational message')
+                # st.button("dummy 3")
+                # st.button("dummy 4")
+                
+                # r1 = results['HIGHLY RECOMMENDED']
+                # for r in r1:
+                #     st.link_button("#1662 " + r[1], "https://www.google.com", help=r[2])
+                #     # expander = st.expander(r[1])
+                #     # expander.write(r[2])
                     
-                r2 = results['UNABLE_TO_DETERMINE']
-                for r in r2:
-                    st.link_button("#1662 " + r[1], "https://www.google.com", help=r[2])
-                    # expander = st.expander(f"[{r[1]}](https://www.google.com)")
-                    # expander.write(r[2])
+                # r2 = results['UNABLE_TO_DETERMINE']
+                # for r in r2:
+                #     st.link_button("#1662 " + r[1], "https://www.google.com", help=r[2])
+                #     # expander = st.expander(f"[{r[1]}](https://www.google.com)")
+                #     # expander.write(r[2])
                     
-            # with c3:
-            #     st.subheader("Info")
-            #     st.info('This is a purely informational message')
-            #     st.button("dummy 3")
-            #     st.button("dummy 4")
+            
                     
                 
 

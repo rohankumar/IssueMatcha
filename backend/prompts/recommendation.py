@@ -38,8 +38,8 @@ The output should be in JSON format:
 
 
 There are only three possible values for each LABEL:
-HIGHLY RECOMMENDED: The ISSUE is highly aligned with USER PREFERENCES and would recommend this ISSUE to the USER.
-NOT RECOMMENDED: The ISSUE does not align in any way with the USER PREFERENCES and would not recommend this ISSUE to the USER.
+HIGHLY_RECOMMENDED: The ISSUE is highly aligned with USER PREFERENCES and would recommend this ISSUE to the USER.
+NOT_RECOMMENDED: The ISSUE does not align in any way with the USER PREFERENCES and would not recommend this ISSUE to the USER.
 UNABLE_TO_DETERMINE: There is not enough context to determine if the USER would be interested in solving this ISSUE.
 
 
@@ -91,8 +91,8 @@ OUTPUT:
 
 
 # There are only three possible values for LABEL:
-# HIGHLY RECOMMENDED: The ISSUE is highly aligned with USER PREFERENCES and would recommend this ISSUE to the USER.
-# NOT RECOMMENDED: The ISSUE does not align in any way with the USER PREFERENCES and would not recommend this ISSUE to the USER.
+# HIGHLY_RECOMMENDED: The ISSUE is highly aligned with USER PREFERENCES and would recommend this ISSUE to the USER.
+# NOT_RECOMMENDED: The ISSUE does not align in any way with the USER PREFERENCES and would not recommend this ISSUE to the USER.
 # UNABLE_TO_DETERMINE: There is not enough context to determine if the USER would be interested in solving this ISSUE.
 
 
