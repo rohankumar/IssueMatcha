@@ -9,7 +9,7 @@ tensorboard
 # triton==2.2.0  # also works without but throws warning and is slower
 llama-index
 streamlit
-flask
+flask==2.1.3
 llama-index-llms-mistralai
 llama-index-vector-stores-weaviate
 ipython

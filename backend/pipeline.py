@@ -143,16 +143,19 @@ def load_domain_issues(path):
     issue_docs = []
     for repo in os.listdir(path):        
         issue_tags = json.load(open(f'{path}/{repo}/tags_summary.json', 'r'))
+        issue_summary = json.load(open(f'{path}/{repo}/comments_summary.json', 'r'))
         issue_map = dict()
         for i in json.load(open(f'{path}/{repo}/issues.json', 'r')):
             issue_map[i['title']] = i
             
         issues_li_docs = []
-        for i in issue_tags:
+        for idx, i in enumerate(issue_tags):
             itags = i['tags']
-            doc_text = f'''{",".join(itags)}'''
+            # repo_summ = i['summary']
+            issue_summ = issue_summary[idx]['summary'].strip('\n')
+            doc_text = f'''TAGS: {",".join(itags)}, ISSUE_SUMMARY: {issue_summ}'''
             li_doc = Document(text=doc_text, 
-                              excluded_embed_metadata_keys=['ISSUE_SUMMARY', 'LABELS', 'ISSUE_ID', 'REPO'], 
+                              excluded_embed_metadata_keys=['LABELS', 'ISSUE_SUMMARY', 'ISSUE_ID', 'REPO'], 
                               excluded_llm_metadata_keys=['LABELS', 'REPO', 'ISSUE ID'],
                               text_template="{metadata_str}", metadata_template=
                               '''{key}:{value}''')
@@ -181,7 +184,7 @@ def data_loader(path=None):
         
         # issues 
         # issue_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'_issues', text_key="text")
-        issue_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'__ISSUES2', text_key="text")
+        issue_vs = WeaviateVectorStore(weaviate_client=client, index_name=domain.upper()+'__WITHCOMMS', text_key="text")
         issue_storage_context = StorageContext.from_defaults(vector_store=issue_vs)
         issue_index = VectorStoreIndex.from_documents(issues, service_context=service_context, storage_context=issue_storage_context, show_progress=True)
         # index_query_engine = issue_index.as_query_engine(similarity_top_k=10, text_qa_template=recommendation_prompt)
@@ -195,7 +198,7 @@ def data_loader(path=None):
 
 def recommend(issue_index, user_pref='', past_pref=''):
     sorting_priority = {'HIGHLY_RECOMMENDED':1, 'NOT_RECOMMENDED': 3, 'UNABLE_TO_DETERMINE': 2}
-    output_keys = ['ISSUE_TITLE', 'ISSUE_ID', 'repo', 'LABELS']
+    output_keys = ['ISSUE_TITLE', 'ISSUE_ID', 'REPO', 'LABELS']
     # domain_vdb_map = {'AI/ML': 'AI_REPOS', 'Systems': 'SYSTEM_ADMIN', 'Web dev': 'WEB_APP_DEV', 'Data Science': 'DATA_SCIENCE',
     #                   'Game Dev': 'GAME_DEV', 'Mobile App Dev': 'MOBILE_APP'
     #                   }
@@ -217,7 +220,7 @@ def recommend(issue_index, user_pref='', past_pref=''):
             'EXPLANATIONS': op['EXPLANATION'],
             'ISSUE_ID': md['ISSUE_ID'],
             'ISSUE_TITLE': md['ISSUE_TITLE'],
-            'REPO': full_repo_paths[md['repo']]
+            'REPO': full_repo_paths[md['REPO']]
         }
         response.append(item)
         response = sorted(response, key=lambda x: sorting_priority[x['LABEL']])
@@ -226,7 +229,7 @@ def recommend(issue_index, user_pref='', past_pref=''):
 
     
 # if __name__ == '__main__':
-#     # data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
+#     data_loader('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
 #     # recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=['transformers', 'pytorch', 'tensor'])
 #     recommend(domain='AI_REPOS', user_pref=['python', 'no gpu'], past_pref=[])
 

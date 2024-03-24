@@ -32,6 +32,22 @@ Let the output be a JSON as this template: \\{"summary"\\: ""}
 ———————————
 ''')
 
+comments_summary_prompt=('''
+You are the maintainer of an open source repository on Github. Your task is to provide a useful brief summary of the discussion or comments for an open issue in this repository.
+You are given the following repository's comments list in markdown:
+
+COMMENTS: COMMENTS in the given issue of the repository which provides more information.
+__
+
+TASK: 
+Generate a summary that can be used to distinguish this issue.
+Let the output be a JSON as this template: \\{"summary"\\: ""}
+###
+———————————
+{query_str}
+———————————
+''')
+
 
 # summary_prompt = ('''You are the maintainer of an open source repository on Github. Your task is to provide a useful brief summary for this repository.
 # You are given the repository's README file in markdown to provide more information about it. Generate a summary that can be used to distinguish this repository.

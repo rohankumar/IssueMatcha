@@ -20,7 +20,7 @@ def main():
         with st.form('pref'):
             domain = st.selectbox(
                 'Domain',
-                ('AI/ML', 'Systems', 'Web dev', 'Backend', 'Data Science', 'Game Dev', 'README typos only'))
+                ('AI/ML', 'Systems', 'Web dev', 'Mobile App Dev', 'Data Science', 'Game Dev'))
             
             languages = st.multiselect(
                 'Language',
@@ -79,12 +79,20 @@ def main():
             issue_ids = []
             explanations = []
             labels = []
+            st.session_state["strong_match_present"] = False
+            st.session_state["match_present"] = False
             for response in chat_response['results']:
-                labels.append(response['LABEL'])
-                repos.append(response['REPO'])
-                titles.append(response['ISSUE_TITLE'])
-                issue_ids.append(response['ISSUE_ID'])
-                explanations.append(response['EXPLANATIONS'])
+                if response['LABEL']!= 'NOT_RECOMMENDED':
+                    if response['LABEL'] == 'UNABLE_TO_DETERMINE':
+                        response['LABEL'] = 'RECOMMENDED'
+                        st.session_state["match_present"]=True
+                    elif response['LABEL'] == 'HIGHLY_RECOMMENDED':
+                        st.session_state["strong_match_present"] = True
+                    labels.append(response['LABEL'])
+                    repos.append(response['REPO'])
+                    titles.append(response['ISSUE_TITLE'])
+                    issue_ids.append(response['ISSUE_ID'])
+                    explanations.append(response['EXPLANATIONS'])
             # for idx, response in enumerate(chat_response):
             #     if response['LABEL'] == 'HIGHLY RECOMMENDED':
             #         results['HIGHLY RECOMMENDED'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
@@ -92,27 +100,35 @@ def main():
             #         results['UNABLE_TO_DETERMINE'].append([links[idx], issues[idx]['title'], issues[idx]['summary'], response['EXPLANATION']])
 
                 
-            c1, c2, c3 = st.columns([2,4,4])
-            with c1:
-                st.subheader("Repository")
-                # for repo in repos:
-                st.button(repos[0], key=0)
-                st.button(repos[1], key=1)
-                st.button(repos[2], key=2)
-                st.button(repos[3], key=3)
-                st.button(repos[4], key=4)
+            # c1, c2 = st.columns([2,4])#,4])
+            # with c1:
+            #     st.subheader("Repository")
+            #     # for repo in repos:
+            #     st.button(repos[0], key=0)
+            #     st.button(repos[1], key=1)
+            #     st.button(repos[2], key=2)
+            #     st.button(repos[3], key=3)
+            #     st.button(repos[4], key=4)
 
-            with c2:
-                st.subheader("Issue")
-                for idx, issue in enumerate(titles):
-                    st.link_button(f'{labels[idx]}: {issue}', f"https://github.com/{repos[idx]}/issues/{issue_ids[idx]}")
-                    # expander = st.expander("WHY IS IT FOR YOU")
-                    # expander.write(explanations[idx])
+            # with c2:
+            if st.session_state["strong_match_present"] == True:
+                st.subheader("Strong Match")
+                for idx, (issue, info) in enumerate(zip(titles, explanations)):
+                    if labels[idx] == 'HIGHLY_RECOMMENDED':
+                        st.link_button(f'{repos[idx]}:  {labels[idx]}: {issue}', f"https://github.com/{repos[idx]}/issues/{issue_ids[idx]}", help=info)
+                        # expander = st.expander("WHY IS IT FOR YOU")
+                        # expander.write(explanations[idx])
+            if st.session_state["match_present"] == True:
+                st.subheader("Good Match")
+                for idx, (issue, info) in enumerate(zip(titles, explanations)):
+                    if labels[idx] == 'RECOMMENDED':
+                        st.link_button(f'{repos[idx]}:  {labels[idx]}: {issue}', f"https://github.com/{repos[idx]}/issues/{issue_ids[idx]}", help=info)
             
-            with c3:
-                st.subheader("Info")
-                for info in explanations:
-                    st.info(f'{info}')
+            
+            # with c3:
+            #     st.subheader("Info")
+            #     for info in explanations:
+            #         st.info(f'{info}')
                 # st.info('This is a purely informational message')
                 # st.button("dummy 3")
                 # st.button("dummy 4")

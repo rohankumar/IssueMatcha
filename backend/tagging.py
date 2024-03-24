@@ -1,6 +1,6 @@
 import os
 import json
-from backend.prompts.tagging import tagging_prompt, summary_prompt
+from backend.prompts.tagging import tagging_prompt, summary_prompt, comments_summary_prompt
 import os
 import requests
 
@@ -32,7 +32,25 @@ def generate_response(prompt):
     response = requests.post(url, json=payload, headers=headers)
     return json.loads(response.text)
 
-
+def generate_comments_summary(comments_input):    
+    try:
+        tags = generate_response(comments_summary_prompt.replace('{query_str}', comments_input))['choices'][0]['message']['content']
+    except:
+        tags = generate_response(comments_summary_prompt.replace('{query_str}', comments_summary_prompt[:-30000]))['choices'][0]['message']['content']
+    output = dict()
+    print(tags)
+    try:
+        output.update(json.loads(tags))
+    except:
+        print(tags)
+        if tags[-1] == '"':
+            tags = tags + '}'
+        # elif tags[-1] == ",":
+        #     tags = tags[:-1] + ']}'
+        else:
+            tags = tags + '"}'
+        output.update(json.loads(tags))
+    return output
 
 
 def generate_tags(tag_input, summ_ip):
@@ -82,8 +100,8 @@ def load_domain(path):
     repo_docs = []
     issue_docs = []
     for repo in os.listdir(path):
-        if 'tags_summary.json' in os.listdir(f'{path}/{repo}'):
-            continue
+        # if 'tags_summary.json' in os.listdir(f'{path}/{repo}'):
+        #     continue
         all_repo_tags = []
         repo_doc = json.load(open(f'{path}/{repo}/README.json', 'r'))
         issues = json.load(open(f'{path}/{repo}/issues.json', 'r'))
@@ -97,13 +115,19 @@ def load_domain(path):
             README: {repo_doc["markdown"]}
             LABELS: {i["labels"]}
             '''
+            comments_input = f'''
+            ISSUE COMMENTS: {i["comments"]}
+            '''
             # COMMENTS: {i["comments"]}
             repo_tags = {"issue_title": i['title']}
-            repo_tags.update(generate_tags(tag_engine_input, summ_ip=repo_doc["markdown"]))
+            # repo_tags.update(generate_tags(tag_engine_input, summ_ip=repo_doc["markdown"]))
+            repo_tags.update(generate_comments_summary(comments_input))
             all_repo_tags.append(repo_tags)
-        json.dump(all_repo_tags, open(f'{path}/{repo}/tags_summary.json', 'w')) 
+        json.dump(all_repo_tags, open(f'{path}/{repo}/comments_summary.json', 'w')) 
     return repo_docs, issue_docs
 
-dirs = ['AI_REPOS', 'DATA_SCIENCE', 'SYSTEM_ADMIN', 'WEB_APP_DEV']
+dirs = ['WEB_APP_DEV']
+# dirs = os.listdir('/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files')
 for d in dirs:
+    # if d != 'WEB_APP_DEV':
     load_domain(f'/Users/swarnashree/mistral_hack/IssueMatcha/data/new_files/{d}')

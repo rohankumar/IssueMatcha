@@ -28,7 +28,7 @@ def startup():
                       }
     for dom, dom_vdb in domain_vdb_map.items():
         client = weaviate.Client(embedded_options=weaviate.embedded.EmbeddedOptions(persistence_data_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate', binary_path='/Users/swarnashree/mistral_hack/IssueMatcha/weaviate'))
-        vs_store = WeaviateVectorStore(weaviate_client=client, index_name=dom_vdb+'__ISSUES2', text_key="text")
+        vs_store = WeaviateVectorStore(weaviate_client=client, index_name=dom_vdb+'__WITHCOMMS', text_key="text")
         issue_index = VectorStoreIndex.from_vector_store(service_context=service_context, vector_store=vs_store, show_progress=True)
         all_indices[dom] = issue_index
     
