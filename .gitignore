@@ -1,4 +1,5 @@
 data/.env
 data/mistral-*
 output_dir/
-tmp_trainer/weaviate
+tmp_trainer/
+weaviate
