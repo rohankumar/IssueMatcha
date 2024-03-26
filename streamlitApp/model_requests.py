@@ -37,7 +37,7 @@ def generate_response(domain, user_pref, past_contributions):
 #    headers = {
 #        "accept": "application/json",
 #        "content-type": "application/json",
-#        "authorization": f"Bearer 0dC5d4SIxC1eK4AAmYFfRs3I9y5sxVks0KjoSuvIe7yqnVhG"
+#        "authorization": f"Bearer {}"
 #    }
 
 
@@ -61,7 +61,7 @@ def generate_mistral_response(prompt):
     headers = {
        "accept": "application/json",
        "content-type": "application/json",
-       "authorization": f"Bearer TWfVrlX659GSTS9hcsgUcPZ8uNzfoQsg"
+       "authorization": f"Bearer {}"
     }
 
 
